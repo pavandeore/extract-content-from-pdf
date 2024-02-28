@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Text Extractor</title>
+    <script type="module" src="https://mozilla.github.io/pdf.js/build/pdf.mjs"></script>
+    <script type="module" src="https://mozilla.github.io/pdf.js/build/pdf.worker.mjs"></script>
+    <style>
+        button{ padding: 5px 30px; }
+        body{ padding-left: 10px; }
+    </style>
+</head>
+<body>
+    <h3>PDF Content Extractor Tool</h3>
+    <input type="file" id="fileInput">
+    <button id="extractButton">Extract Text</button>
+    <br><br>
+    <textarea id="extractedText" rows="35" cols="150" readonly></textarea>
+
+    <script>
+
+        const fileInput = document.getElementById('fileInput');
+        const extractButton = document.getElementById('extractButton');
+        const extractedText = document.getElementById('extractedText');
+
+        extractButton.addEventListener('click', () => {
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('Please select a PDF file.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const data = event.target.result;
+
+                // Load PDF
+                pdfjsLib.getDocument({ data }).promise.then(pdf => {
+                    // Number of pages in the PDF
+                    const numPages = pdf.numPages;
+                    let allText = '';
+
+                    // Loop through each page
+                    const getPageText = function(pageNumber) {
+                        return pdf.getPage(pageNumber).then(page => {
+                            return page.getTextContent().then(textContent => {
+                                // Extracted text for the page
+                                const pageText = textContent.items.map(item => item.str).join('');
+                                allText += pageText + '\n';
+                            });
+                        });
+                    };
+
+                    const promises = [];
+                    for (let i = 1; i <= numPages; i++) {
+                        promises.push(getPageText(i));
+                    }
+
+                    // Wait for all pages to be processed
+                    Promise.all(promises).then(() => {
+                        extractedText.value = allText;
+                    });
+                }).catch(error => {
+                    console.error('Error loading PDF:', error);
+                    alert('Error loading PDF. Please try again.');
+                });
+            };
+
+            reader.readAsArrayBuffer(file);
+        });
+    </script>
+</body>
+</html>
